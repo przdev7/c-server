@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <err.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -27,6 +26,16 @@ typedef struct {
   char *protocol;       // in most cases HTTP/1.1
 } HttpRequestLine;
 
+typedef struct {
+  char *key;
+  void *value;
+} HttpRequestHeader;
+
+typedef struct {
+  HttpRequestLine requestLine;
+  HttpRequestHeader headers[];
+} HttpRequest;
+
 unsigned long parseMethod(char *methodRaw) {
   if (strcmp(methodRaw, "GET") == 0)
     return GET;
@@ -53,8 +62,10 @@ unsigned long parseMethod(char *methodRaw) {
 HttpRequestLine parseRequestLine(char *str) {
   HttpRequestLine type;
   memset(&type, 0, sizeof(type));
-
-  char *token = strtok(str, " ");
+  char *saveptr;
+  char *strcopy = malloc(strlen(str) + 1);
+  strcpy(strcopy, str);
+  char *token = strtok_r(strcopy, " ", &saveptr);
 
   switch (parseMethod(token)) {
   case GET:
@@ -72,15 +83,29 @@ HttpRequestLine parseRequestLine(char *str) {
 
   while (token != NULL) {
     if (token[0] == '/') {
-      type.request_target = token;
+      type.request_target = strdup(token);
     } else {
-      type.protocol = token;
+      type.protocol = strdup(token);
     }
 
-    token = strtok(NULL, " ");
+    token = strtok_r(NULL, " ", &saveptr);
   }
 
+  free(strcopy);
   return type;
+}
+
+void parseHeaders(char *str) {
+  HttpRequestHeader header;
+  char *saveptr;
+  char *key = strtok_r(str, ":", &saveptr);
+  char *value = strtok_r(NULL, ":", &saveptr);
+  memset(&header, 0, sizeof(header));
+
+  header.key = key;
+  header.value = value;
+
+  printf("%s, %s - header\n", key, value);
 }
 
 int main() {
@@ -118,18 +143,17 @@ int main() {
     err(EXIT_FAILURE, "connection failed");
   }
 
-  ssize_t mess_size = recv(conn, &buff, sizeof(buff), 0);
-  /* printf("%s", buff); */
+  char *saveptr;
+  ssize_t mess_size = recv(conn, buff, sizeof(buff), 0);
+  char *line = strtok_r(buff, "\r\n", &saveptr);
 
-  printf("%s", buff);
-  char *line = strtok(buff, "\r\n");
   HttpRequestLine type = parseRequestLine(line);
-
-  /* printf("%s\n", line); */
   /* printf("%d, %s, %s", type.method, type.request_target, type.protocol); */
-  while (line != NULL) {
 
-    line = strtok(NULL, "\r\n");
+  while (line != NULL) {
+    line = strtok_r(NULL, "\r\n", &saveptr);
+    // printf("%s\n", line);
+    /* parseHeaders(line); */
   }
 
   shutdown(tcp_socket, SHUT_RDWR);
