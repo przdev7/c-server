@@ -110,3 +110,6 @@ dkms.conf
 
 # Build dir
 build/
+
+# cache
+.cache
