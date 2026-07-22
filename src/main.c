@@ -5,52 +5,78 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 int main() {
-  int tcp_socket, conn;
+  int socket_fd, client_fd;
   int opt = 1;
-  struct sockaddr_in addr, conn_addr;
-  socklen_t conn_len = sizeof(conn_addr);
-  char *buff = malloc(8192 * sizeof(char) + 1);
+  int capacity = 8;
+  struct sockaddr_in server_addr, client_addr;
+  socklen_t client_addr_len = sizeof(client_addr);
+  char *buff = malloc(capacity * sizeof(char) + 1);
 
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(PORT);
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(PORT);
+  server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-  tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (tcp_socket == -1) {
+  socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (socket_fd == -1) {
     err(EXIT_FAILURE, "tcp_socket");
   }
 
-  if (setsockopt(tcp_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+  if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
     perror("setsockopt failed");
   }
 
-  if (bind(tcp_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+  if (bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     err(EXIT_FAILURE, "bind");
   }
 
-  if (listen(tcp_socket, SOMAXCONN) == -1) {
+  if (listen(socket_fd, SOMAXCONN) < 0) {
     err(EXIT_FAILURE, "listen");
   }
   printf("Server listening on port %d...\n", PORT);
 
-  conn = accept(tcp_socket, (struct sockaddr *)&conn_addr, &conn_len);
-  if (conn == -1) {
+  client_fd =
+      accept(socket_fd, (struct sockaddr *)&client_addr, &client_addr_len);
+  if (client_fd == -1) {
     err(EXIT_FAILURE, "connection failed");
   }
 
-  ssize_t mess_size = recv(conn, buff, 8, 0);
+  ssize_t mess_size;
+  ssize_t total = 0;
+  while ((mess_size = recv(client_fd, buff + total, capacity - total, 0)) > 0) {
+    total += mess_size;
 
-  buff[mess_size] = '\0';
+    if (total == capacity) {
+      capacity *= 2;
+      char *tmp = realloc(buff, capacity);
+
+      if (tmp == NULL) {
+        free(buff);
+        err(EXIT_FAILURE, "realloc failed");
+      }
+
+      buff = tmp;
+    }
+
+    if (strstr(buff, "\r\n\r\n")) {
+      break;
+    }
+  }
+
+  buff[total] = '\0';
   char *saveptr = buff;
+
   char *line = strsep(&saveptr, "\n");
   HttpRequestLine type = parse_request_line(line);
+  HttpRequestHeader *headers = parse_headers(&saveptr);
 
   free(buff);
-  shutdown(tcp_socket, SHUT_RDWR);
-  close(tcp_socket);
+
+  shutdown(socket_fd, SHUT_RDWR);
+  close(socket_fd);
   return 0;
 }

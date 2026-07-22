@@ -1,5 +1,7 @@
 #include "http.h"
 #include <err.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -60,4 +62,23 @@ HttpRequestLine parse_request_line(char *str) {
 
   free(strcopy);
   return type;
+}
+
+HttpRequestHeader *parse_headers(char **saveptr) {
+  int16_t count = 0;
+  char *token, saveptr_header;
+
+  while ((token = strsep(saveptr, "\n")) != NULL) {
+    if (count > MAX_HEADERS_COUNT) {
+      err(EXIT_FAILURE, "max headers count is 30");
+    }
+
+    if (token[0] == '\r' || token[0] == '\0') {
+      break;
+    }
+
+    printf("%s", token);
+
+    count++;
+  }
 }

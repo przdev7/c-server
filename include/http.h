@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 
 #define PORT 8888
+#define MAX_HEADERS_COUNT 30
 
 typedef enum {
   GET,
@@ -31,3 +32,4 @@ typedef struct {
 } HttpRequest;
 
 HttpRequestLine parse_request_line(char *str);
+HttpRequestHeader *parse_headers(char **saveptr);
