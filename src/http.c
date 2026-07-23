@@ -1,7 +1,6 @@
 #include "http.h"
 #include <err.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,7 +65,9 @@ HttpRequestLine parse_request_line(char *str) {
 
 HttpRequestHeader *parse_headers(char **saveptr) {
   int16_t count = 0;
-  char *token, saveptr_header;
+  char *token, *saveptr_header;
+  HttpRequestHeader *headers =
+      malloc(MAX_HEADERS_COUNT * sizeof(HttpRequestHeader));
 
   while ((token = strsep(saveptr, "\n")) != NULL) {
     if (count > MAX_HEADERS_COUNT) {
@@ -77,8 +78,21 @@ HttpRequestHeader *parse_headers(char **saveptr) {
       break;
     }
 
-    printf("%s", token);
+    HttpRequestHeader header;
+    memset(&header, 0, sizeof(header));
+
+    header.key = strtok_r(token, ":", &saveptr_header);
+    header.value = strtok_r(NULL, ":", &saveptr_header);
+    headers[count] = header;
 
     count++;
   }
+
+  headers = realloc(headers, count * sizeof(HttpRequestHeader));
+
+  if (headers == NULL) {
+    err(EXIT_FAILURE, "headers realloc failed");
+  }
+
+  return headers;
 }

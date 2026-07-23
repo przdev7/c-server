@@ -30,7 +30,8 @@ int main() {
     perror("setsockopt failed");
   }
 
-  if (bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+  if (bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
+      0) {
     err(EXIT_FAILURE, "bind");
   }
 
@@ -74,6 +75,13 @@ int main() {
   HttpRequestLine type = parse_request_line(line);
   HttpRequestHeader *headers = parse_headers(&saveptr);
 
+  HttpRequestHeader *main_header = headers;
+  while (headers->key != NULL) {
+    printf("%s, %s\n", headers->key, headers->value);
+    headers++;
+  }
+
+  free(main_header);
   free(buff);
 
   shutdown(socket_fd, SHUT_RDWR);

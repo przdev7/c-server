@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct {
   char *key;
-  void *value;
+  char *value;
 } HttpRequestHeader;
 
 typedef struct {

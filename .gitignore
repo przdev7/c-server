@@ -113,3 +113,6 @@ build/
 
 # cache
 .cache
+
+#vscode
+.vscode/
