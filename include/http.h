@@ -33,3 +33,4 @@ typedef struct {
 
 HttpRequestLine parse_request_line(char *str);
 HttpRequestHeader *parse_headers(char **saveptr);
+char *get_header(HttpRequestHeader *headers, char *key);

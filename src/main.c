@@ -1,6 +1,7 @@
 #include "http.h"
 #include <err.h>
 #include <netinet/in.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 int main() {
   int socket_fd, client_fd;
   int opt = 1;
-  int capacity = 8;
+  int capacity = 128;
   struct sockaddr_in server_addr, client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
   char *buff = malloc(capacity * sizeof(char) + 1);
@@ -76,10 +77,16 @@ int main() {
   HttpRequestHeader *headers = parse_headers(&saveptr);
 
   HttpRequestHeader *main_header = headers;
-  while (headers->key != NULL) {
-    printf("%s, %s\n", headers->key, headers->value);
-    headers++;
+
+  char *cl_key = "Content-Length";
+  char *cl_raw_value = get_header(headers, cl_key);
+
+  if (cl_raw_value == NULL || atoi(cl_raw_value) < 0) {
+    err(EXIT_FAILURE, "invalid request content length");
   }
+
+  size_t cl_value = atoi(cl_raw_value);
+  printf("%zu\n", cl_value);
 
   free(main_header);
   free(buff);

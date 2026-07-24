@@ -1,8 +1,20 @@
 #include "http.h"
+#include <ctype.h>
 #include <err.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+char *trim(char *s) {
+  int l = strlen(s);
+
+  while (isspace(s[l - 1]) || s[l - 1] == '\r')
+    --l;
+  while (*s && isspace(*s) || *s == '\r')
+    ++s, --l;
+
+  return strndup(s, l);
+}
 
 unsigned long parse_method(char *methodRaw) {
   if (strcmp(methodRaw, "GET") == 0)
@@ -63,6 +75,22 @@ HttpRequestLine parse_request_line(char *str) {
   return type;
 }
 
+char *get_header(HttpRequestHeader *headers, char *key) {
+  char *value = NULL;
+  while (headers->key != NULL) {
+    if (strcmp(headers->key, key) == 0) {
+      value = headers->value;
+      break;
+    }
+
+    headers++;
+  }
+
+  //  value[strlen(value)] = '\0';
+
+  return value;
+}
+
 HttpRequestHeader *parse_headers(char **saveptr) {
   int16_t count = 0;
   char *token, *saveptr_header;
@@ -74,15 +102,15 @@ HttpRequestHeader *parse_headers(char **saveptr) {
       err(EXIT_FAILURE, "max headers count is 30");
     }
 
-    if (token[0] == '\r' || token[0] == '\0') {
+    if (token[0] == '\0' || token[0] == '\r') {
       break;
     }
 
     HttpRequestHeader header;
     memset(&header, 0, sizeof(header));
 
-    header.key = strtok_r(token, ":", &saveptr_header);
-    header.value = strtok_r(NULL, ":", &saveptr_header);
+    header.key = trim(strtok_r(token, ":", &saveptr_header));
+    header.value = trim(strtok_r(NULL, ":", &saveptr_header));
     headers[count] = header;
 
     count++;
